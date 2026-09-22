@@ -1,0 +1,45 @@
+/* =====================================================================
+   Icons
+   ===================================================================== */
+const ICONS = {
+  select: '<path d="M5 3l14 7-6 2-2 6z"/>',
+  hand: '<path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+  rect: '<rect x="4" y="5.5" width="16" height="13" rx="1.5"/>',
+  ellipse: '<circle cx="12" cy="12" r="8"/>',
+  polygon: '<path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z"/>',
+  star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  line: '<path d="M5.5 18.5l13-13"/><circle cx="5.5" cy="18.5" r="1.3"/><circle cx="18.5" cy="5.5" r="1.3"/>',
+  text: '<path d="M5 6V4h14v2M12 4v16M9 20h6"/>',
+  perspective: '<path d="M8.5 5h7l4.5 14H4z"/><path d="M12 5v14" stroke-dasharray="2 2.4" opacity=".55"/>',
+  path: '<path d="M4 16c3-9 6-9 8-4s5 5 8-4"/>',
+  image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/>',
+  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  minus: '<path d="M5 12h14"/>',
+  fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>',
+  download: '<path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/>',
+  unite: '<path d="M4 4h10v6h6v10H10v-6H4z"/>',
+  subtract: '<path d="M4 4h10v6h-4v4H4z"/><path d="M10 10h10v10H10z" stroke-dasharray="2 2.4" opacity=".55"/>',
+  intersect: '<path d="M10 10h4v4h-4z"/><path d="M4 4h10v10H4zM10 10h10v10H10z" opacity=".45"/>',
+  exclude: '<path d="M4 4h10v6h-4v4H4zM14 10h6v10H10v-6h4z"/>',
+  'al-l': '<path d="M4 3v18"/><rect x="7" y="6" width="12" height="4"/><rect x="7" y="14" width="7" height="4"/>',
+  'al-ch': '<path d="M12 3v18"/><rect x="5" y="6" width="14" height="4"/><rect x="8" y="14" width="8" height="4"/>',
+  'al-r': '<path d="M20 3v18"/><rect x="5" y="6" width="12" height="4"/><rect x="10" y="14" width="7" height="4"/>',
+  'al-t': '<path d="M3 4h18"/><rect x="6" y="7" width="4" height="12"/><rect x="14" y="7" width="4" height="7"/>',
+  'al-cv': '<path d="M3 12h18"/><rect x="6" y="5" width="4" height="14"/><rect x="14" y="8" width="4" height="8"/>',
+  'al-b': '<path d="M3 20h18"/><rect x="6" y="5" width="4" height="12"/><rect x="14" y="10" width="4" height="7"/>',
+  'flip-h': '<path d="M12 3v18" stroke-dasharray="2 3"/><path d="M8 6v12H3z"/><path d="M16 6v12h5z" opacity=".5"/>',
+  'flip-v': '<path d="M3 12h18" stroke-dasharray="2 3"/><path d="M6 3v5h12z"/><path d="M6 21v-5h12z" opacity=".5"/>',
+  tleft: '<path d="M4 6h16M4 12h10M4 18h13"/>',
+  tcenter: '<path d="M4 6h16M7 12h10M5.5 18h13"/>',
+  tright: '<path d="M4 6h16M10 12h10M7 18h13"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3 3.7M6.6 6.7A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 4.4-1.1"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  unlock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/>'
+};
+const icon = n => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[n] || '') + '</svg>';
+$$('[data-icon]').forEach(e => { e.innerHTML = icon(e.dataset.icon); });
+

@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Cutout v1.5.0</title>
+<style>
+<!--STYLES-->
+</style>
+</head>
+<body>
+
+</head>
+<body>
+<div id="app">
+
+  <header id="top">
+    <div class="brand" aria-label="Cutout"><svg id="wordmark" width="96" height="22" viewBox="0 0 96 22" fill="currentColor" role="img" aria-label="Cutout"></svg></div>
+
+    <div class="menuwrap">
+      <button class="btn" id="btn-file" aria-haspopup="true" aria-expanded="false">File</button>
+      <div class="menu" id="menu-file" hidden>
+        <button data-act="new">New drawing</button>
+        <button data-act="import">Import photo…</button>
+        <button data-act="open">Open project…</button>
+        <button data-act="save">Save project…</button>
+        <button data-act="example">Load example</button>
+      </div>
+    </div>
+
+    <button class="btn icon" id="btn-undo" title="Undo (Ctrl+Z)" aria-label="Undo"><span class="ico" data-icon="undo"></span></button>
+    <button class="btn icon" id="btn-redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><span class="ico" data-icon="redo"></span></button>
+
+    <div class="spacer"></div>
+
+    <span id="save-status" class="save-status hide-narrow" role="status" aria-live="polite"></span>
+
+    <div class="inline hide-narrow" style="gap:2px">
+      <button class="btn icon" id="z-out" title="Zoom out (-)" aria-label="Zoom out"><span class="ico" data-icon="minus"></span></button>
+      <button class="btn" id="z-label" title="Reset to 100%. Ctrl + scroll to zoom." style="min-width:56px">100%</button>
+      <button class="btn icon" id="z-in" title="Zoom in (=)" aria-label="Zoom in"><span class="ico" data-icon="plus"></span></button>
+    </div>
+    <button class="btn icon" id="z-fit" title="Fit page (0)" aria-label="Fit page to screen"><span class="ico" data-icon="fit"></span></button>
+    <button class="btn icon only-narrow" id="btn-panel" title="Properties" aria-label="Show properties" aria-pressed="false"><span class="ico" data-icon="panel"></span></button>
+    <button class="btn primary" id="btn-export"><span class="ico" data-icon="download"></span>Export</button>
+  </header>
+
+  <nav id="tools" aria-label="Tools">
+    <button class="tool" data-tool="select" title="Select (V)" aria-label="Select tool"><span class="ico" data-icon="select"></span></button>
+    <button class="tool" data-tool="hand" title="Pan (H, or hold Space)" aria-label="Pan tool"><span class="ico" data-icon="hand"></span></button>
+    <div class="tool-sep"></div>
+    <button class="tool" data-tool="rect" title="Rectangle (R)" aria-label="Rectangle tool"><span class="ico" data-icon="rect"></span></button>
+    <button class="tool" data-tool="ellipse" title="Ellipse (E)" aria-label="Ellipse tool"><span class="ico" data-icon="ellipse"></span></button>
+    <button class="tool" data-tool="polygon" title="Polygon (P)" aria-label="Polygon tool"><span class="ico" data-icon="polygon"></span></button>
+    <button class="tool" data-tool="star" title="Star (S)" aria-label="Star tool"><span class="ico" data-icon="star"></span></button>
+    <button class="tool" data-tool="line" title="Line (L)" aria-label="Line tool"><span class="ico" data-icon="line"></span></button>
+    <div class="tool-sep"></div>
+    <button class="tool" data-tool="text" title="Text (T)" aria-label="Text tool"><span class="ico" data-icon="text"></span></button>
+    <div class="tool-sep"></div>
+    <button class="tool" data-tool="perspective" title="Perspective (D)" aria-label="Perspective tool"><span class="ico" data-icon="perspective"></span></button>
+    <div class="tool-sep"></div>
+    <button class="tool" data-act="import" title="Import a photo" aria-label="Import a photo"><span class="ico" data-icon="image"></span></button>
+  </nav>
+
+  <main id="stagewrap">
+    <svg id="stage" class="t-select" tabindex="-1" aria-label="Drawing canvas">
+      <defs>
+        <pattern id="gridpat" patternUnits="userSpaceOnUse" width="20" height="20"><path id="gridpath" d="M20 0H0V20" fill="none" stroke="#7b83b0" stroke-opacity=".22" stroke-width="1"/></pattern>
+        <pattern id="checker" patternUnits="userSpaceOnUse" width="24" height="24">
+          <rect width="24" height="24" fill="#ffffff"/><rect width="12" height="12" fill="#dfe2ee"/><rect x="12" y="12" width="12" height="12" fill="#dfe2ee"/>
+        </pattern>
+      </defs>
+      <defs id="pic-defs"></defs>
+      <g id="world">
+        <rect id="ab-bg" x="0" y="0" width="800" height="600" fill="#fff"/>
+        <rect id="grid-rect" x="0" y="0" width="800" height="600" fill="url(#gridpat)" pointer-events="none"/>
+        <g id="layer"></g>
+        <path id="outside" class="outside" fill-rule="evenodd"/>
+        <rect id="ab-frame" x="0" y="0" width="800" height="600" fill="none" stroke="#7b83b0" stroke-opacity=".5" stroke-width="1" vector-effect="non-scaling-stroke" pointer-events="none"/>
+        <g id="overlay"></g>
+      </g>
+    </svg>
+
+    <div id="empty" hidden>
+      <h2>A blank page</h2>
+      <p>Choose a shape or the text tool on the left, then click or drag on the page. Select two shapes to combine them, or import a photo and use a shape as its mask.</p>
+      <div class="btns">
+        <button class="btn primary" data-act="example">Try an example</button>
+        <button class="btn line" data-act="import">Import a photo</button>
+        <button class="btn line" data-act="open">Open a project</button>
+      </div>
+    </div>
+    <div id="persp-bar" role="group" aria-label="Perspective" hidden>
+      <span id="persp-hint"></span>
+      <button class="btn line" id="persp-reset" title="Put the selection back the way it was">Reset</button>
+      <button class="btn primary" id="persp-done">Done</button>
+    </div>
+  </main>
+
+  <aside id="panel" aria-label="Properties">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="design" aria-selected="true">Design</button>
+      <button role="tab" data-tab="layers" aria-selected="false">Layers</button>
+      <button role="tab" data-tab="page" aria-selected="false">Page</button>
+    </div>
+
+    <!-- DESIGN -->
+    <div class="pane" data-pane="design">
+      <p class="hint" id="empty-hint">Click a shape to edit it. Drag on empty space to select several, or hold Shift and click.</p>
+
+      <section class="sec" id="sec-geom" hidden>
+        <h3>Position and size</h3>
+        <div class="grid2">
+          <label class="f"><span id="lb-x">X</span><input type="number" id="f-x" step="1"></label>
+          <label class="f"><span id="lb-y">Y</span><input type="number" id="f-y" step="1"></label>
+          <label class="f"><span id="lb-w">W</span><input type="number" id="f-w" step="1" min="1"></label>
+          <label class="f"><span id="lb-h">H</span><input type="number" id="f-h" step="1" min="1"></label>
+          <label class="f" id="wrap-rot"><span>Angle</span><input type="number" id="f-rot" step="1"></label>
+          <label class="f" id="wrap-r" hidden><span>Round</span><input type="number" id="f-r" step="1" min="0"></label>
+        </div>
+      </section>
+
+      <section class="sec" id="sec-text" hidden>
+        <h3>Text</h3>
+        <div class="stack">
+          <textarea id="tx-text" rows="2" spellcheck="false" aria-label="Text content"></textarea>
+          <select id="tx-font" aria-label="Font"></select>
+          <div class="grid2">
+            <label class="f"><span>Size</span><input type="number" id="tx-size" min="4" max="1200" step="1"></label>
+            <label class="f"><span>Lines</span><input type="number" id="tx-lh" min="0.6" max="3" step="0.05"></label>
+            <label class="f"><span>Space</span><input type="number" id="tx-ls" min="-20" max="200" step="1" title="Letter spacing, percent of the font size"></label>
+            <div class="seg" role="group" aria-label="Alignment">
+              <button data-align="left" title="Align left" aria-label="Align left"><span class="ico" data-icon="tleft"></span></button>
+              <button data-align="center" title="Center" aria-label="Center"><span class="ico" data-icon="tcenter"></span></button>
+              <button data-align="right" title="Align right" aria-label="Align right"><span class="ico" data-icon="tright"></span></button>
+            </div>
+          </div>
+          <button class="btn line" id="tx-addfont">Add a font from your computer…</button>
+        </div>
+        <p class="help">Text is drawn as outlines, so it looks the same everywhere and can be combined with shapes.</p>
+      </section>
+
+      <section class="sec" id="sec-poly" hidden>
+        <h3>Polygon</h3>
+        <div class="stack">
+          <label class="f"><span style="width:44px">Sides</span><input type="number" id="pg-sides" min="3" max="24" step="1"></label>
+          <label class="f"><span style="width:44px">Star</span><input type="checkbox" id="pg-star"></label>
+          <label class="f" id="wrap-inner"><span style="width:44px">Depth</span><input type="range" id="pg-inner" min="10" max="90"></label>
+        </div>
+      </section>
+
+      <section class="sec" id="sec-mask" hidden>
+        <h3>Photo mask</h3>
+        <button class="btn line" id="btn-mask" style="width:100%" disabled title="Put the selected photo inside the selected shape or text">Use shapes as mask</button>
+        <p class="help" id="mask-help"></p>
+        <div id="mask-controls" hidden>
+          <div class="grid2" style="margin-top:10px">
+            <label class="f"><span style="width:50px">Move X</span><input type="number" id="mk-x" step="1"></label>
+            <label class="f"><span style="width:50px">Move Y</span><input type="number" id="mk-y" step="1"></label>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <span class="lbl">Zoom</span>
+            <input type="number" id="mk-zoom" min="10" max="2000" step="5" style="width:78px;flex:none" aria-label="Photo zoom percent">
+            <input type="range" id="mk-zoom-r" min="25" max="400" aria-label="Photo zoom">
+          </div>
+          <div class="inline" style="margin-top:8px">
+            <button class="btn line" id="btn-fit" style="flex:1" title="Center the photo and make it just cover the shape">Fit photo</button>
+            <button class="btn line" id="btn-release" style="flex:1" title="Take the photo out of the shape">Release mask</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" id="sec-combine">
+        <h3>Combine shapes</h3>
+        <div class="combo">
+          <button data-bool="unite" disabled><span class="ico" data-icon="unite"></span><span><b>Unite</b><small>Merge into one</small></span></button>
+          <button data-bool="subtract" disabled><span class="ico" data-icon="subtract"></span><span><b>Subtract</b><small>Cut out the front</small></span></button>
+          <button data-bool="intersect" disabled><span class="ico" data-icon="intersect"></span><span><b>Intersect</b><small>Keep the overlap</small></span></button>
+          <button data-bool="exclude" disabled><span class="ico" data-icon="exclude"></span><span><b>Exclude</b><small>Remove the overlap</small></span></button>
+        </div>
+        <p class="help" id="combine-help">Select two or more shapes. The bottom shape keeps its color, and Subtract cuts the shapes in front of it out of it.</p>
+        <div class="stack" style="margin-top:10px">
+          <button class="btn line" id="btn-flatten" disabled title="Turn the selected object into a plain shape. Text stops being editable.">Convert to plain shape</button>
+        </div>
+      </section>
+
+      <section class="sec" id="sec-app" hidden>
+        <h3>Appearance</h3>
+        <div class="row" id="row-fill">
+          <span class="lbl">Fill</span>
+          <input type="color" id="fill-color" aria-label="Fill color">
+          <input type="text" class="hex" id="fill-hex" maxlength="7" spellcheck="false" aria-label="Fill hex code">
+          <button class="chip" id="fill-none" aria-pressed="false">None</button>
+        </div>
+        <div class="palette" id="palette" role="group" aria-label="Color swatches. Click to fill, Shift-click to stroke."></div>
+        <div class="row" id="row-stroke">
+          <span class="lbl">Outline</span>
+          <input type="color" id="stroke-color" aria-label="Outline color">
+          <input type="text" class="hex" id="stroke-hex" maxlength="7" spellcheck="false" aria-label="Outline hex code">
+          <button class="chip" id="stroke-none" aria-pressed="false">None</button>
+        </div>
+        <div class="row" id="row-weight">
+          <span class="lbl">Weight</span>
+          <input type="number" id="stroke-w" min="0" max="300" step="1" aria-label="Outline weight">
+          <select id="stroke-dash" aria-label="Outline style"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option></select>
+        </div>
+        <div class="row" id="row-corners">
+          <span class="lbl">Corners</span>
+          <select id="stroke-join" aria-label="Outline corners"><option value="miter">Sharp</option><option value="round">Round</option><option value="bevel">Bevel</option></select>
+        </div>
+        <div class="row">
+          <span class="lbl">Opacity</span>
+          <input type="range" id="opacity" min="0" max="100" aria-label="Opacity">
+          <output id="opacity-out" style="width:40px;text-align:right;color:var(--ink-2)">100%</output>
+        </div>
+      </section>
+
+      <section class="sec" id="sec-arrange" hidden>
+        <h3>Arrange</h3>
+        <div class="align" role="group" aria-label="Align">
+          <button class="btn line icon" data-align-to="l" title="Align left" aria-label="Align left"><span class="ico" data-icon="al-l"></span></button>
+          <button class="btn line icon" data-align-to="ch" title="Center horizontally" aria-label="Center horizontally"><span class="ico" data-icon="al-ch"></span></button>
+          <button class="btn line icon" data-align-to="r" title="Align right" aria-label="Align right"><span class="ico" data-icon="al-r"></span></button>
+          <button class="btn line icon" data-align-to="t" title="Align top" aria-label="Align top"><span class="ico" data-icon="al-t"></span></button>
+          <button class="btn line icon" data-align-to="cv" title="Center vertically" aria-label="Center vertically"><span class="ico" data-icon="al-cv"></span></button>
+          <button class="btn line icon" data-align-to="b" title="Align bottom" aria-label="Align bottom"><span class="ico" data-icon="al-b"></span></button>
+        </div>
+        <div class="row mirror-row">
+          <span class="lbl">Mirror</span>
+          <button class="btn line" id="btn-flip-h" title="Mirror horizontally (Shift+H)"><span class="ico" data-icon="flip-h"></span>Horizontal</button>
+          <button class="btn line" id="btn-flip-v" title="Mirror vertically (Shift+V)"><span class="ico" data-icon="flip-v"></span>Vertical</button>
+        </div>
+        <div class="small-btns" style="margin-bottom:8px">
+          <button class="btn line" data-order="front" title="Bring to front">Front</button>
+          <button class="btn line" data-order="forward" title="Bring forward (])">Up</button>
+          <button class="btn line" data-order="backward" title="Send backward ([)">Down</button>
+          <button class="btn line" data-order="back" title="Send to back">Back</button>
+        </div>
+        <div class="inline">
+          <button class="btn line" id="btn-dup" style="flex:1">Duplicate</button>
+          <button class="btn line" id="btn-del" style="flex:1;color:var(--danger)">Delete</button>
+        </div>
+        <p class="help">With one object selected, Align lines it up with the page. With several, it lines them up with each other. Mirror flips an object in place, or a whole selection as one group.</p>
+      </section>
+    </div>
+
+    <!-- LAYERS -->
+    <div class="pane" data-pane="layers" hidden>
+      <div id="layers"></div>
+    </div>
+
+    <!-- PAGE -->
+    <div class="pane" data-pane="page" hidden>
+      <section class="sec">
+        <h3>Page size</h3>
+        <div class="stack">
+          <select id="pg-preset" aria-label="Page size preset"></select>
+          <div class="grid2">
+            <label class="f"><span>W</span><input type="number" id="pg-w" min="16" max="8000" step="1"></label>
+            <label class="f"><span>H</span><input type="number" id="pg-h" min="16" max="8000" step="1"></label>
+          </div>
+        </div>
+      </section>
+      <section class="sec">
+        <h3>Background</h3>
+        <div class="row">
+          <input type="color" id="bg-color" aria-label="Page background color">
+          <input type="text" class="hex" id="bg-hex" maxlength="7" spellcheck="false" aria-label="Page background hex code">
+          <button class="chip" id="bg-none" aria-pressed="false">Clear</button>
+        </div>
+      </section>
+      <section class="sec">
+        <h3>Grid</h3>
+        <div class="stack">
+          <label class="inline"><input type="checkbox" id="grid-show"> Show grid</label>
+          <label class="inline"><input type="checkbox" id="grid-snap"> Snap to grid</label>
+          <label class="f"><span style="width:56px">Spacing</span><input type="number" id="grid-size" min="2" max="200" step="1"></label>
+        </div>
+      </section>
+      <section class="sec">
+        <h3>Photos and saving</h3>
+        <p class="help" id="photo-info" style="margin-top:0"></p>
+      </section>
+      <section class="sec" style="border-bottom:0">
+        <h3>Shortcuts</h3>
+        <p class="help" style="margin-top:0">V select · H pan · R rectangle · E ellipse · P polygon · S star · L line · T text · D perspective.<br>Shift while drawing keeps shapes square. Shift while turning snaps to 15°. Shift while tilting moves two corners together. Shift+H and Shift+V mirror. Arrow keys nudge. Delete removes.</p>
+      </section>
+      <section class="sec" style="border-top:1px solid var(--line)">
+        <h3>About</h3>
+        <p class="help" style="margin-top:0"><strong id="about-ver"></strong><br>Drawings and photos are saved only in this browser, on this device.</p>
+      </section>
+    </div>
+  </aside>
+</div>
+
+<!-- EXPORT -->
+<div id="export-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ex-title">
+    <div class="modal-prev">
+      <div class="prev-box"><img id="ex-preview" alt="Export preview"></div>
+      <div class="prev-meta" id="ex-meta"></div>
+    </div>
+    <div class="modal-opts">
+      <h2 id="ex-title">Export</h2>
+      <div class="opt"><span class="olabel">Format</span>
+        <div class="seg txt" id="ex-fmt" role="group" aria-label="Format">
+          <button data-v="png">PNG</button><button data-v="jpg">JPG</button><button data-v="webp">WebP</button><button data-v="svg">SVG</button>
+        </div>
+      </div>
+      <div class="opt" id="ex-area-wrap"><span class="olabel">What to export</span>
+        <div class="seg txt" id="ex-area" role="group" aria-label="Area">
+          <button data-v="artboard">Whole page</button><button data-v="selection">Selection</button>
+        </div>
+      </div>
+      <div class="opt" id="ex-scale-wrap"><span class="olabel">Size</span>
+        <div class="seg txt" id="ex-scale" role="group" aria-label="Scale">
+          <button data-v="1">1×</button><button data-v="2">2×</button><button data-v="3">3×</button><button data-v="4">4×</button>
+        </div>
+      </div>
+      <div class="opt" id="ex-trans-wrap">
+        <label class="inline"><input type="checkbox" id="ex-trans"> Transparent background</label>
+      </div>
+      <div class="opt" id="ex-q-wrap"><label for="ex-q">Quality</label><input type="range" id="ex-q" min="40" max="100" value="92"></div>
+      <div class="opt"><label for="ex-name">File name</label><input type="text" id="ex-name" maxlength="60" spellcheck="false"></div>
+      <div class="warn" id="ex-warn" hidden></div>
+      <div class="modal-actions">
+        <button class="btn line" id="ex-cancel">Cancel</button>
+        <button class="btn primary" id="ex-go">Download</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="busy" hidden aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="file-project" accept=".json,application/json" hidden>
+<input type="file" id="file-font" accept=".ttf,.otf,.woff" hidden>
+<input type="file" id="file-photo" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+
+<!--SCRIPTS-->
+</body>
+</html>

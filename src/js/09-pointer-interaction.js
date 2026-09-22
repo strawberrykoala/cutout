@@ -1,0 +1,292 @@
+/* =====================================================================
+   Pointer interaction
+   ===================================================================== */
+let drag = null, pinch = null, spaceDown = false, userView = false;
+let psn = null;   // the live perspective session (see the Perspective section)
+const pointers = new Map();
+const MIN = 2;
+const snapV = v => S.snap ? Math.round(v / S.grid) * S.grid : v;
+const snapPt = p => ({ x: snapV(p.x), y: snapV(p.y) });
+function toWorld(e) { const r = stage.getBoundingClientRect(); return { x: (e.clientX - r.left - view.x) / view.z, y: (e.clientY - r.top - view.y) / view.z }; }
+
+function setTool(t) {
+  S.tool = t;
+  if (t !== 'perspective') psn = null;
+  $$('.tool[data-tool]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === t ? 'true' : 'false'));
+  stage.setAttribute('class', 't-' + (t === 'select' || t === 'perspective' ? 'select' : t === 'hand' ? 'hand' : t === 'text' ? 'text' : 'draw') + (spaceDown ? ' panning' : ''));
+  const bar = $('#persp-bar'); if (bar) bar.hidden = t !== 'perspective';
+  updateEmpty();
+  drawOverlay();
+}
+
+stage.addEventListener('pointerdown', e => {
+  if (psnBusy || (e.pointerType === 'mouse' && e.button === 2)) return;
+  try { stage.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  closeMenus();
+  if (pointers.size === 2) { startPinch(); return; }
+  if (pointers.size > 2) return;
+  if (e.button === 1 || S.tool === 'hand' || spaceDown) {
+    drag = { type: 'pan', sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y };
+    stage.classList.add('panning');
+    e.preventDefault();
+    return;
+  }
+  const p = toWorld(e);
+  if (S.tool === 'perspective') { perspDown(e, p); return; }
+  if (S.tool !== 'select') { beginDraw(e, p); return; }
+  const h = e.target.closest && e.target.closest('[data-h]');
+  if (h) { beginHandle(h.dataset.h, p, e); return; }
+  const g = e.target.closest && e.target.closest('[data-id]');
+  const o = g ? byId(+g.dataset.id) : null;
+  if (o && !o.locked && !o.hidden) { beginMove(o, p, e); return; }
+  beginMarquee(p, e);
+});
+
+stage.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && pointers.size === 2) { updatePinch(); return; }
+  if (!drag) return;
+  const p = toWorld(e);
+  switch (drag.type) {
+    case 'pan': userView = true; view.x = drag.vx + (e.clientX - drag.sx); view.y = drag.vy + (e.clientY - drag.sy); applyView(); break;
+    case 'move': updateMove(p, e); break;
+    case 'draw': updateDraw(p, e); break;
+    case 'resize': updateResize(p, e); break;
+    case 'rotate': updateRotate(p, e); break;
+    case 'lineend': updateLineEnd(p, e); break;
+    case 'persp': updatePersp(p, e); break;
+    case 'marquee': updateMarquee(p, e); break;
+  }
+});
+
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pinch) { if (pointers.size < 2) pinch = null; return; }
+  if (!drag) return;
+  const d = drag; drag = null;
+  stage.classList.toggle('panning', spaceDown);
+  switch (d.type) {
+    case 'move':
+      if (d.moved) commit();
+      else if (d.collapseTo && !d.shift) { S.sel = new Set([d.collapseTo]); refreshAll(); }
+      else refreshAll();
+      break;
+    case 'draw': finishDraw(d, e); break;
+    case 'resize': case 'rotate': case 'lineend': commit(); break;
+    case 'persp': perspRelease(d); break;
+    case 'marquee': refreshAll(); break;
+    default: drawOverlay();
+  }
+}
+stage.addEventListener('pointerup', endPointer);
+stage.addEventListener('pointercancel', endPointer);
+stage.addEventListener('contextmenu', e => e.preventDefault());
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = stage.getBoundingClientRect();
+  userView = true;
+  if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-clamp(e.deltaY, -60, 60) * 0.01), e.clientX - r.left, e.clientY - r.top);
+  else { view.x -= e.deltaX; view.y -= e.deltaY; applyView(); }
+}, { passive: false });
+stage.addEventListener('dblclick', e => {
+  if (S.tool !== 'select') return;
+  const g = e.target.closest && e.target.closest('[data-id]');
+  const o = g ? byId(+g.dataset.id) : null;
+  if (o && o.kind === 'text') { S.sel = new Set([o.id]); refreshAll(); openPanel(); focusText(); }
+});
+
+/* ---------- pinch to zoom / two-finger pan ---------- */
+function pinchState() {
+  const [a, b] = Array.from(pointers.values()), r = stage.getBoundingClientRect();
+  return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2 - r.left, my: (a.y + b.y) / 2 - r.top };
+}
+function startPinch() {
+  userView = true;
+  if (drag && drag.type !== 'pan' && drag.type !== 'marquee') revertUncommitted();
+  drag = null;
+  const s = pinchState();
+  pinch = { d0: s.d, mx0: s.mx, my0: s.my, v0: { x: view.x, y: view.y, z: view.z } };
+}
+function updatePinch() {
+  const s = pinchState(), v0 = pinch.v0;
+  const z = clamp(v0.z * s.d / pinch.d0, 0.05, 32);
+  const wx = (pinch.mx0 - v0.x) / v0.z, wy = (pinch.my0 - v0.y) / v0.z;
+  view.z = z; view.x = s.mx - wx * z; view.y = s.my - wy * z;
+  applyView();
+}
+
+/* ---------- select / move ---------- */
+function beginMove(o, p, e) {
+  const multi = e.shiftKey || e.metaKey || e.ctrlKey;
+  let collapseTo = null;
+  if (multi) {
+    if (S.sel.has(o.id)) { S.sel.delete(o.id); refreshAll(); return; }
+    S.sel.add(o.id);
+  } else if (!S.sel.has(o.id)) S.sel = new Set([o.id]);
+  else if (S.sel.size > 1) collapseTo = o.id;
+  drag = {
+    type: 'move', start: p, sx: e.clientX, sy: e.clientY, moved: false, shift: multi, collapseTo,
+    orig: selObjs().filter(x => !x.locked).map(x => ({ id: x.id, x: x.x, y: x.y, x1: x.x1, y1: x.y1, x2: x.x2, y2: x.y2 }))
+  };
+  refreshAll();
+}
+function updateMove(p, e) {
+  if (!drag.moved) { if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 3) return; drag.moved = true; }
+  let dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+  if (e.shiftKey && !drag.shift) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
+  const a = drag.orig[0];
+  if (a && S.snap) { dx = snapV(a.x + dx) - a.x; dy = snapV(a.y + dy) - a.y; }
+  drag.orig.forEach(s => {
+    const o = byId(s.id); if (!o) return;
+    o.x = s.x + dx; o.y = s.y + dy;
+    if (o.kind === 'line') { o.x1 = s.x1 + dx; o.x2 = s.x2 + dx; o.y1 = s.y1 + dy; o.y2 = s.y2 + dy; }
+  });
+  render();
+}
+
+/* ---------- marquee ---------- */
+function beginMarquee(p, e) {
+  const additive = e.shiftKey || e.metaKey || e.ctrlKey;
+  const base = additive ? new Set(S.sel) : new Set();
+  if (!additive) S.sel = new Set();
+  drag = {
+    type: 'marquee', start: p, cur: null, base,
+    rect() { return { x: Math.min(this.start.x, this.cur.x), y: Math.min(this.start.y, this.cur.y), w: Math.abs(this.cur.x - this.start.x), h: Math.abs(this.cur.y - this.start.y) }; }
+  };
+  refreshAll();
+}
+function updateMarquee(p) {
+  drag.cur = p;
+  const r = drag.rect(), sel = new Set(drag.base);
+  doc.objects.forEach(o => {
+    if (o.hidden || o.locked) return;
+    const b = aabb(o);
+    if (b.x < r.x + r.w && b.x + b.w > r.x && b.y < r.y + r.h && b.y + b.h > r.y) sel.add(o.id);
+  });
+  S.sel = sel;
+  drawOverlay(); updateInspector(); renderLayers();
+}
+
+/* ---------- drawing ---------- */
+function beginDraw(e, p) {
+  if (S.tool === 'text') { createText(p); return; }
+  drag = { type: 'draw', tool: S.tool, start: snapPt(p), sx: e.clientX, sy: e.clientY, id: null };
+}
+function makeDrawn(tool, box) {
+  if (tool === 'rect') return newShape('rect', box);
+  if (tool === 'ellipse') return newShape('ellipse', box);
+  if (tool === 'polygon') return newShape('polygon', Object.assign({ sides: 6 }, box));
+  if (tool === 'star') return newShape('polygon', Object.assign({ sides: 5, star: true, inner: 0.45 }, box));
+  return null;
+}
+function updateDraw(p, e) {
+  const d = drag;
+  if (!d.id && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 4) return;
+  let cur = snapPt(p);
+  if (d.tool === 'line') {
+    if (e.shiftKey) cur = constrainAngle(d.start, cur);
+    let o = d.id ? byId(d.id) : null;
+    if (!o) {
+      o = newShape('line', { x1: d.start.x, y1: d.start.y, x2: cur.x, y2: cur.y });
+      doc.objects.push(o); d.id = o.id; S.sel = new Set([o.id]);
+    }
+    o.x2 = cur.x; o.y2 = cur.y; refresh(o);
+  } else {
+    let x = Math.min(d.start.x, cur.x), y = Math.min(d.start.y, cur.y), w = Math.abs(cur.x - d.start.x), h = Math.abs(cur.y - d.start.y);
+    if (e.shiftKey) {
+      const m = Math.max(w, h); w = m; h = m;
+      x = cur.x < d.start.x ? d.start.x - m : d.start.x; y = cur.y < d.start.y ? d.start.y - m : d.start.y;
+    }
+    w = Math.max(w, 1); h = Math.max(h, 1);
+    let o = d.id ? byId(d.id) : null;
+    if (!o) { o = makeDrawn(d.tool, { x, y, w, h }); doc.objects.push(o); d.id = o.id; S.sel = new Set([o.id]); }
+    else { o.x = x; o.y = y; o.w = w; o.h = h; refresh(o); }
+  }
+  render();
+}
+function finishDraw(d, e) {
+  if (!d.id) {
+    // a plain click: drop a default-sized shape centered on the click
+    const c = d.start, s = 120;
+    let o;
+    if (d.tool === 'line') o = newShape('line', { x1: c.x - 80, y1: c.y, x2: c.x + 80, y2: c.y });
+    else o = makeDrawn(d.tool, { x: c.x - s / 2, y: c.y - s / 2, w: s, h: s });
+    if (!o) return;
+    doc.objects.push(o); S.sel = new Set([o.id]);
+  }
+  setTool('select');
+  commit();
+}
+function constrainAngle(a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy), ang = Math.round(Math.atan2(dy, dx) / (Math.PI / 12)) * (Math.PI / 12);
+  return { x: a.x + Math.cos(ang) * len, y: a.y + Math.sin(ang) * len };
+}
+function createText(p) {
+  const sp = snapPt(p);
+  const o = newShape('text', { x: sp.x, y: sp.y });
+  doc.objects.push(o); S.sel = new Set([o.id]);
+  setTool('select'); commit(); openPanel(); focusText();
+}
+function focusText() {
+  switchTab('design');
+  setTimeout(() => { const t = $('#tx-text'); t.focus(); t.select(); }, 30);
+}
+
+/* ---------- resize / rotate / line ends ---------- */
+function beginHandle(h, p, e) {
+  const o = one(); if (!o) return;
+  if (h === 'rot') {
+    const c = centerOf(o);
+    drag = { type: 'rotate', id: o.id, c, a0: Math.atan2(p.y - c.y, p.x - c.x) / D2R, rot0: o.rot };
+  } else if (h === 'p1' || h === 'p2') {
+    drag = { type: 'lineend', id: o.id, end: h };
+  } else {
+    drag = { type: 'resize', id: o.id, h, o0: { x: o.x, y: o.y, w: o.w, h: o.h, rot: o.rot, size: o.size }, pic0: o.pic ? Object.assign({}, o.pic) : null };
+  }
+}
+function updateRotate(p, e) {
+  const o = byId(drag.id); if (!o) return;
+  let r = drag.rot0 + (Math.atan2(p.y - drag.c.y, p.x - drag.c.x) / D2R - drag.a0);
+  if (e.shiftKey) r = Math.round(r / 15) * 15;
+  o.rot = rnd(normDeg(r), 2);
+  render();
+}
+function updateLineEnd(p, e) {
+  const o = byId(drag.id); if (!o) return;
+  const other = drag.end === 'p1' ? { x: o.x2, y: o.y2 } : { x: o.x1, y: o.y1 };
+  let q = snapPt(p);
+  if (e.shiftKey) q = constrainAngle(other, q);
+  if (drag.end === 'p1') { o.x1 = q.x; o.y1 = q.y; } else { o.x2 = q.x; o.y2 = q.y; }
+  refresh(o); render();
+}
+function updateResize(p, e) {
+  const o = byId(drag.id); if (!o) return;
+  const o0 = drag.o0, hn = drag.h;
+  if (S.snap && !o0.rot) p = snapPt(p);
+  const c0 = { x: o0.x + o0.w / 2, y: o0.y + o0.h / 2 };
+  const q = rotPt(p.x, p.y, c0.x, c0.y, -o0.rot), ux = q.x - c0.x, uy = q.y - c0.y;
+  const hx = hn.includes('e') ? 1 : hn.includes('w') ? 0 : 0.5, hy = hn.includes('s') ? 1 : hn.includes('n') ? 0 : 0.5;
+  const hw = o0.w / 2, hh = o0.h / 2;
+  let L = -hw, R = hw, T = -hh, B = hh;
+  if (hx === 1) R = Math.max(ux, L + MIN); else if (hx === 0) L = Math.min(ux, R - MIN);
+  if (hy === 1) B = Math.max(uy, T + MIN); else if (hy === 0) T = Math.min(uy, B - MIN);
+  let w = R - L, h = B - T;
+  const uniform = e.shiftKey || o.kind === 'text' || o.kind === 'image';
+  if (uniform) {
+    let s;
+    if (hx !== 0.5 && hy !== 0.5) s = Math.max(w / o0.w, h / o0.h);
+    else if (hx !== 0.5) s = w / o0.w; else s = h / o0.h;
+    s = Math.max(s, MIN / Math.max(1, Math.min(o0.w, o0.h)));
+    if (o.kind === 'text') { o.size = Math.max(4, rnd(o0.size * s, 2)); refresh(o); w = o.w; h = o.h; }
+    else { w = o0.w * s; h = o0.h * s; }
+    if (hx === 1) R = L + w; else if (hx === 0) L = R - w; else { L = -w / 2; R = w / 2; }
+    if (hy === 1) B = T + h; else if (hy === 0) T = B - h; else { T = -h / 2; B = h / 2; }
+  }
+  const cw = rotPt(c0.x + (L + R) / 2, c0.y + (T + B) / 2, c0.x, c0.y, o0.rot);
+  o.w = w; o.h = h; o.x = cw.x - w / 2; o.y = cw.y - h / 2;
+  if (o.kind !== 'text') refresh(o);
+  if (drag.pic0) rescalePic(o, drag.pic0, o.w / o0.w, o.h / o0.h);
+  render();
+}
+

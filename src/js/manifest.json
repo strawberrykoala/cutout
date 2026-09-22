@@ -1,0 +1,23 @@
+[
+  "js/00-preamble.js",
+  "js/01-helpers.js",
+  "js/02-icons.js",
+  "js/03-fonts-runtime.js",
+  "js/04-document-model.js",
+  "js/05-svg-export.js",
+  "js/06-boolean-ops.js",
+  "js/07-history-autosave.js",
+  "js/08-rendering.js",
+  "js/09-pointer-interaction.js",
+  "js/10-perspective.js",
+  "js/11-editing-commands.js",
+  "js/12-ui-chrome.js",
+  "js/13-inspector.js",
+  "js/14-layers-tab.js",
+  "js/15-page-tab.js",
+  "js/16-export.js",
+  "js/17-projects.js",
+  "js/18-photos.js",
+  "js/19-ui-wiring.js",
+  "js/20-boot.js"
+]
