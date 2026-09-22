@@ -1,9 +1,8 @@
 # Building Cutout
 
-Cutout still ships as **one self-contained HTML file** — that hasn't changed,
-and it's not going to. No server, no install, no build step required to *use*
-it. What's changed is how that file gets made: instead of hand-editing one
-3,000-line file, you edit smaller files under `src/`, and a build script
+Cutout ships as **one self-contained HTML file**. No server, no install, no build step required to *use*
+it. But that's not how it's made: instead of hand-editing one
+massive file, you edit smaller files under `src/`, and a build script
 glues them back into the single file you distribute.
 
 ## Layout
@@ -51,15 +50,12 @@ byte-for-byte identical.
 
 ### Why the JS files aren't ES modules
 
-The files under `src/js/` all share one global scope on purpose, the same
-way the old single `<script>` block did. `build.js` concatenates them **in
+The files under `src/js/` all share one global scope on purpose. `build.js` concatenates them **in
 the exact order listed in `src/js/manifest.json`** — it does not resolve
 `import`/`export`. This was a deliberate choice: converting ~2,400 lines of
 tightly-coupled canvas/editor code to real ES modules means tracking every
 cross-reference between sections by hand, which is a good way to introduce a
-subtle bug in code with no automated test coverage. Concatenation is boring
-and safe, and it's what got this migration verified byte-for-byte against
-the working file you started with.
+subtle bug in code with no automated test coverage.
 
 If you want real modules later (so a bundler can tree-shake, or so your
 editor can jump to definitions across files), that's a good follow-up
