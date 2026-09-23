@@ -71,6 +71,7 @@ npm run dev       # builds once, then rebuilds on any change under src/
 npm run build:min # same, but minifies JS and CSS with esbuild (~10% smaller)
 npm run serve     # build once, then serve dist/ on localhost so you can test in a browser
 npm run release   # build, then copy the result to the repo root (see below)
+npm test          # run the unit tests in tests-unit/ (see tests-unit/README.md)
 ```
 
 `npm install` is optional for everyday development — `npm run build` and
@@ -103,9 +104,9 @@ rebuild automatically as you save.
 
 1. Make your changes under `src/`.
 2. `npm run build` and open `dist/Cutout-v<version>.html` in a browser.
-   Actually click through it — draw a shape, add text, combine two shapes,
-   import a photo and mask it, export a PNG. There's no automated test
-   suite for the canvas/editor behavior, so this manual pass is the real
+   Run `npm test` first, then actually click through it — draw a shape, add text, combine two shapes,
+   import a photo and mask it, export a PNG. The unit tests cover
+   geometry, SVG export and boolean ops, but not the canvas/editor UI, so this manual pass is the real
    safety net right now.
 3. If you're bumping the version, update `cutoutVersion` in `package.json`
    first (this controls the output filename, matching the existing
@@ -120,7 +121,7 @@ rebuild automatically as you save.
 ## What CI actually checks
 
 `.github/workflows/build.yml` runs `npm run build` on every push and pull
-request, then diffs the result against whatever `Cutout-v<version>.html`
+request, runs `npm test`, then diffs the build result against whatever `Cutout-v<version>.html`
 is currently committed at the repo root. It is **not** a functional test —
 it can't click buttons or draw shapes — it only proves the build still
 produces valid, reproducible output and that nobody forgot to re-run the
