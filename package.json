@@ -9,9 +9,11 @@
     "build:min": "node build.js --minify",
     "dev": "node build.js --watch",
     "serve": "node build.js && npx --yes serve dist",
-    "release": "node build.js && node scripts/copy-to-root.js"
+    "release": "node build.js && node scripts/copy-to-root.js",
+    "test": "node --test tests-unit/*.test.js"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "paper": "^0.12.18"
   }
 }
